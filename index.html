@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NuvoraFit - دستیار هوشمند تناسب اندام</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-color: #0f0f13;
+            --card-bg: #1a1a24;
+            --primary: #9d4edd;
+            --primary-variant: #7b2cbf;
+            --text-main: #f8f9fa;
+            --text-muted: #adb5bd;
+            --danger: #ef476f;
+            --success: #06d6a0;
+            --warning: #ffd166;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); overflow-x: hidden; padding-bottom: 80px; }
+        
+        .page { display: none; padding: 20px; animation: fadeIn 0.3s ease-in-out; }
+        .page.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        
+        h1, h2, h3 { margin-bottom: 15px; color: var(--primary); font-weight: 700; }
+        p { margin-bottom: 15px; color: var(--text-muted); line-height: 1.6; font-size: 0.95em; }
+        
+        .form-group { margin-bottom: 18px; position: relative; }
+        label { display: block; margin-bottom: 6px; font-size: 0.9em; color: var(--text-main); font-weight: 500; }
+        input, select { width: 100%; padding: 14px; background: var(--card-bg); border: 1px solid #2d2d3d; color: white; border-radius: 10px; outline: none; font-size: 1em; transition: 0.2s; }
+        input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(157, 78, 221, 0.2); }
+        
+        button { width: 100%; padding: 14px; background: var(--primary); color: #fff; border: none; border-radius: 10px; font-weight: bold; font-size: 1em; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 12px rgba(157, 78, 221, 0.3); }
+        button:hover { background: var(--primary-variant); transform: translateY(-1px); }
+        
+        .card { background: var(--card-bg); padding: 20px; border-radius: 14px; margin-bottom: 20px; border: 1px solid #252533; box-shadow: 0 6px 15px rgba(0,0,0,0.4); }
+        
+        .bottom-nav { position: fixed; bottom: 0; width: 100%; background: #15151c; display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid #252533; z-index: 1000; backdrop-filter: blur(10px); }
+        .nav-item { color: var(--text-muted); text-align: center; cursor: pointer; font-size: 1.2em; transition: 0.2s; }
+        .nav-item.active { color: var(--primary); transform: scale(1.05); }
+        .nav-item span { display: block; font-size: 0.65em; margin-top: 4px; font-weight: 600; }
+        
+        .exercise-card { background: #222230; padding: 16px; border-radius: 12px; margin-bottom: 14px; border-right: 4px solid var(--primary); }
+        .exercise-header { display: flex; align-items: center; margin-bottom: 8px; }
+        .exercise-icon { width: 50px; height: 50px; background: #2d2d3d; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-size: 22px; margin-left: 15px; color: var(--primary); min-width: 50px; }
+        
+        .food-list { list-style: none; }
+        .food-list li { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #252533; font-size: 0.95em; }
+        .delete-food-btn { background: rgba(239, 71, 111, 0.2); color: var(--danger); border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 0.8em; width: auto; }
+        .delete-food-btn:hover { background: var(--danger); color: #fff; }
+
+        .search-results { background: #222230; border-radius: 10px; max-height: 160px; overflow-y: auto; margin-top: 5px; display: none; position: absolute; width: 100%; z-index: 10; border: 1px solid #3d3d4d; }
+        .search-results div { padding: 12px; border-bottom: 1px solid #2d2d3d; cursor: pointer; display: flex; justify-content: space-between; font-size: 0.9em; }
+        .search-results div:hover { background: #2d2d3d; }
+
+        #workoutModal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 2000; display: none; flex-direction: column; justify-content: space-between; padding: 25px; text-align: center; overflow-y: auto; }
+        .timer-display { font-size: 4em; font-weight: bold; color: var(--success); margin: 15px 0; text-shadow: 0 0 20px rgba(6, 214, 160, 0.3); }
+        .workout-progress { font-size: 1.1em; color: var(--text-muted); font-weight: 600; }
+        
+        .diet-plan-box { background: rgba(6, 214, 160, 0.08); border: 1px solid rgba(6, 214, 160, 0.3); padding: 16px; border-radius: 10px; margin-bottom: 15px; }
+        .diet-plan-box h4 { color: var(--success); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+
+        .pedometer-circle {
+            width: 190px; height: 190px; border: 8px solid var(--primary); border-radius: 50%;
+            display: flex; flex-direction: column; justify-content: center; align-items: center; margin: 25px auto;
+            box-shadow: 0 0 30px rgba(157, 78, 221, 0.2);
+        }
+
+        .edit-profile-btn { background: rgba(157, 78, 221, 0.15); color: var(--primary); border: 1px solid var(--primary); padding: 8px 14px; font-size: 0.85em; width: auto; border-radius: 8px; font-weight: 600; }
+        .edit-profile-btn:hover { background: var(--primary); color: #fff; }
+
+        .music-player-box { background: #1e1e2b; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333344; }
+    </style>
+</head>
+<body>
+
+    <div id="onboardingPage" class="page active">
+        <div style="max-width: 500px; margin: 0 auto; padding-top: 10px;">
+            <h1 style="text-align: center; font-size: 2.2em; margin-bottom: 5px;">NuvoraFit</h1>
+            <p style="text-align: center; margin-bottom: 25px;">سیستم هوشمند تناسب اندام اختصاصی بانوان و آقایان</p>
+            
+            <div class="card">
+                <div class="form-group">
+                    <label>جنسیت:</label>
+                    <select id="gender" onchange="updateFocusOptions()">
+                        <option value="male">مرد</option>
+                        <option value="female">زن</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>سن:</label><input type="number" id="age" placeholder="مثلاً 26"></div>
+                <div class="form-group"><label>قد (سانتی‌متر):</label><input type="number" id="height" placeholder="مثلاً 170"></div>
+                <div class="form-group"><label>وزن فعلی (کیلوگرم):</label><input type="number" id="weight" placeholder="مثلاً 75"></div>
+                <div class="form-group">
+                    <label>هدف اصلی:</label>
+                    <select id="focusArea"></select>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-fire-alt" style="color:var(--warning)"></i> درجه سختی و شتاب کالری‌سوزی:</label>
+                    <select id="difficultyLevel">
+                        <option value="normal">عادی (استاندارد و متعادل - کاهش تدریجی)</option>
+                        <option value="hard" selected>فشرده (چربی‌سوزی سریع و هدف ۱ ماهه)</option>
+                        <option value="extreme">فوق‌سنگین (آزمون آتشین - حداکثر شدت و کالری‌سوزی)</option>
+                    </select>
+                </div>
+                <button onclick="saveProfile()" style="margin-top: 10px;">محاسبه و ورود به برنامه تناسب اندام</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="dashboardPage" class="page">
+        <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h3>NuvoraFit - روز <span id="streakDays" style="color:var(--primary)">1</span> از ۳۰ (پروژه ۱ ماهه)</h3>
+                <p id="dateDisplay" style="margin-bottom: 12px; font-size: 0.85em;"></p>
+                <button class="edit-profile-btn" onclick="openOnboarding()"><i class="fas fa-user-edit"></i> ویرایش مشخصات و اهداف</button>
+            </div>
+            <i class="fas fa-fire" style="font-size: 2.5em; color: var(--warning);"></i>
+        </div>
+        
+        <div class="card" style="text-align: center;">
+            <h3>وضعیت فشرده چربی‌سوزی و هدف</h3>
+            <div style="font-size: 2.5em; font-weight: bold; color: var(--primary);" id="bmiValue">0</div>
+            <p id="bmiText" style="margin-top: 5px; font-weight:bold;"></p>
+            
+            <div style="background: #222230; padding: 18px; border-radius: 10px; margin-top: 15px; text-align: right; border: 1px solid #2d2d3d;">
+                <p style="margin:0 0 10px 0; color:#fff;" id="weightDiffText"></p>
+                <p style="margin:0; color:#fff;">کالری هدف روزانه (بر اساس درجه سختی): <strong id="tdeeValue" style="color:var(--warning)">0</strong> کیلوکالری</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>تنظیم یادآور هوشمند تمرین</h3>
+            <p style="font-size: 0.85em;">ساعتی که می‌خواهید اعلان ورزشی دریافت کنید:</p>
+            <div style="display: flex; gap: 10px;">
+                <input type="time" id="workoutTimeInput">
+                <button onclick="setReminder()" style="width: auto; padding: 0 25px;">ثبت یادآور</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>نمودار پیشرفت تغییرات وزن (kg)</h3>
+            <div style="position: relative; height: 220px; width: 100%;">
+                <canvas id="weightChart"></canvas>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <input type="number" id="newWeightInput" placeholder="ثبت وزن امروز (kg)" step="0.1">
+                <button onclick="addWeightRecord()" style="width: auto; padding: 0 25px;">ثبت وزن</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="workoutPage" class="page">
+        <h2>برنامه تمرینی مگا-چربی‌سوزی <span id="todayDayName" style="color: var(--primary);">امروز</span></h2>
+        <p id="workoutCategoryTitle" style="color: var(--success); font-weight: 600; margin-bottom: 15px;"></p>
+        
+        <div class="music-player-box">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h4 style="color: var(--primary); margin: 0;"><i class="fas fa-headphones"></i> پخش‌کننده موزیک انگیزشی ورزشی</h4>
+                <select id="musicSelector" onchange="changeMusicTrack()" style="width: 160px; padding: 6px; font-size: 0.85em;">
+                    <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3">موزیک ۱: ریتم تند کاردیو</option>
+                    <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3">موزیک ۲: انرژی قدرتی</option>
+                    <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3">موزیک ۳: ضربان بالا</option>
+                </select>
+            </div>
+            <audio id="workoutMusic" controls loop style="width: 100%;">
+                <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
+            </audio>
+        </div>
+
+        <button onclick="startGuidedWorkout()" style="margin-bottom: 20px; background: var(--success); color:#000; font-size: 1.05em;"><i class="fas fa-play-circle"></i> شروع تمرین صوتی مگا-چربی‌سوزی متناسب با سطح سختی</button>
+        <p id="workoutDesc"></p>
+        <div id="exerciseList"></div>
+    </div>
+
+    <div id="dietPage" class="page">
+        <h2>تغذیه تخصصی و کالری‌شماری</h2>
+        
+        <div class="card" style="text-align: center;">
+            <p>مقایسه کالری دریافتی امروز با سقف مجاز تعیین‌شده</p>
+            <div style="display: flex; justify-content: center; align-items: baseline; gap: 15px; margin: 10px 0;">
+                <div>
+                    <span style="font-size: 0.8em; color: var(--text-muted); display: block;">کالری مصرف شده:</span>
+                    <span id="consumedCalories" style="font-size: 2.2em; font-weight: bold; color: var(--success);">0</span>
+                </div>
+                <span style="font-size: 1.8em; color: var(--text-muted);">/</span>
+                <div>
+                    <span style="font-size: 0.8em; color: var(--text-muted); display: block;">حد مجاز کالری هدف:</span>
+                    <span id="targetCalDisplay" style="font-size: 2.2em; font-weight: bold; color: var(--warning);">0</span>
+                </div>
+            </div>
+            <p id="caloriePenaltyAlert" style="color: var(--danger); font-weight: bold; margin-top: 8px; font-size: 0.9em; display: none;"><i class="fas fa-exclamation-triangle"></i> اخطار: حد مجاز کالری رد شد! جریمه هوازی در بخش قدم‌شمار اعمال شد.</p>
+        </div>
+
+        <div class="card">
+            <h3>نمودار کالری دریافتی روزهای گذشته</h3>
+            <div style="position: relative; height: 200px; width: 100%;">
+                <canvas id="calorieChart"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>رژیم غذایی هوشمند امروز (<span id="dietDayTitle" style="color:var(--primary);"></span>)</h3>
+            <p style="font-size: 0.85em; margin-bottom: 15px;">این منو بر اساس سطح سختی و هدف ۱ ماهه شما تنظیم شده است:</p>
+            <div id="recommendedDiet"></div>
+        </div>
+        
+        <div class="card">
+            <h3>ثبت وعده غذایی از پایگاه داده</h3>
+            <div class="form-group">
+                <input type="text" id="foodSearch" placeholder="جستجوی غذا (مثلاً برنج، مرغ، تخم‌مرغ، جوجه)..." onkeyup="searchFood()">
+                <div id="searchResults" class="search-results"></div>
+            </div>
+            <div class="form-group" style="display:flex; gap:10px;">
+                <input type="text" id="foodName" placeholder="نام غذا">
+                <input type="number" id="foodCal" placeholder="کالری (kcal)" style="width: 120px;">
+            </div>
+            <button onclick="addFood()">ثبت در دفترچه تغذیه</button>
+        </div>
+
+        <div class="card">
+            <h3>تاریخچه تغذیه امروز</h3>
+            <ul class="food-list" id="foodListUl"></ul>
+        </div>
+    </div>
+
+    <div id="walkPage" class="page">
+        <h2>قدم‌شمار و پیاده‌روی هوازی</h2>
+        <p>با زدن دکمه شروع، تایمر پیاده‌روی، گام‌های تخمینی و میزان کالری‌سوزی محاسبه می‌شود.</p>
+        
+        <div class="pedometer-circle">
+            <span id="stepCount" style="font-size: 2.4em; font-weight: bold; color: var(--success);">0</span>
+            <p style="margin:0; font-size:0.8em; color:var(--text-muted);">گام‌های تخمینی</p>
+        </div>
+        
+        <div style="text-align: center; margin-bottom: 20px;">
+            <p>زمان پیاده‌روی: <strong id="walkTime" style="color:var(--primary); font-size: 1.2em;">00:00</strong></p>
+            <p>کالری سوزانده شده: <strong id="walkCal" style="color:var(--success); font-size: 1.2em;">0</strong> کیلوکالری</p>
+            <p id="penaltyWalkText" style="color: var(--warning); font-size: 0.85em; margin-top: 5px;"></p>
+        </div>
+        
+        <div style="display: flex; gap: 10px;">
+            <button id="startWalkBtn" onclick="toggleWalk()">شروع پیاده‌روی</button>
+            <button onclick="resetWalk()" style="background: #333; color: white;">ریست</button>
+        </div>
+    </div>
+
+    <div id="workoutModal">
+        <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <button onclick="exitGuidedWorkoutToMenu()" style="width: auto; padding: 8px 16px; background: #333; color: #fff; font-size: 0.9em;"><i class="fas fa-arrow-right"></i> بازگشت به منو</button>
+                <div class="workout-progress" id="gwProgress">حرکت 1 از 6</div>
+                <div style="width: 90px;"></div>
+            </div>
+            <h2 id="gwTitle" style="font-size: 2.2em; margin-bottom: 8px; color: var(--primary);">نام حرکت</h2>
+            <p id="gwCategoryBadge" style="color: var(--success); font-weight: bold; margin-bottom: 10px; font-size: 0.95em;"></p>
+            <p id="gwDesc" style="color: var(--text-muted); margin-bottom: 20px; max-width: 600px; margin-left: auto; margin-right: auto; line-height: 1.7; font-size: 1em;"></p>
+        </div>
+
+        <div>
+            <i id="gwIcon" class="fas fa-dumbbell" style="font-size: 4em; color: var(--primary); margin-bottom: 15px;"></i>
+            <div class="timer-display" id="gwTimerDisplay">00:50</div>
+        </div>
+
+        <div style="display: flex; gap: 12px; width: 100%; max-width: 400px; margin: 0 auto; padding-bottom: 15px;">
+            <button id="gwActionBtn" onclick="toggleGuidedTimer()" style="background: var(--success); color:#000; font-size: 1.1em;">شروع تایمر</button>
+            <button onclick="nextGuidedWorkout()" style="background: var(--primary); color:#fff; font-size: 1.1em;">حرکت بعدی</button>
+        </div>
+    </div>
+
+    <div class="bottom-nav" id="bottomNav" style="display: none;">
+        <div class="nav-item active" onclick="nav('dashboardPage', this)"><i class="fas fa-home"></i><span>خانه</span></div>
+        <div class="nav-item" onclick="nav('workoutPage', this)"><i class="fas fa-dumbbell"></i><span>تمرین</span></div>
+        <div class="nav-item" onclick="nav('walkPage', this)"><i class="fas fa-shoe-prints"></i><span>قدم‌شمار</span></div>
+        <div class="nav-item" onclick="nav('dietPage', this)"><i class="fas fa-utensils"></i><span>تغذیه</span></div>
+    </div>
+
+    <script>
+        const foodDatabase = [
+            { name: "برنج سفید کته (یک کفگیر پر)", cal: 220 },
+            { name: "نان لواش (یک کف دست)", cal: 25 },
+            { name: "نان سنگک سبوس‌دار (یک کف دست)", cal: 65 },
+            { name: "سینه مرغ آب‌پز/گریل (100 گرم)", cal: 155 },
+            { name: "تخم‌مرغ آب‌پز (یک عدد درشت)", cal: 78 },
+            { name: "پنیر کم‌چرب (یک قوطی کبریت)", cal: 60 },
+            { name: "گوجه و خیار (مقدار دلخواه)", cal: 20 },
+            { name: "موز رسیده (یک عدد متوسط)", cal: 105 },
+            { name: "سیب درختی با پوست (یک عدد)", cal: 85 },
+            { name: "ماکارونی و پاستا (یک لیوان پخته)", cal: 200 },
+            { name: "قرمه سبزی کم‌روغن (یک ملاقه)", cal: 130 },
+            { name: "شیر کم‌چرب (یک لیوان)", cal: 90 },
+            { name: "جوجه کباب سینه (150 گرم)", cal: 195 },
+            { name: "عدسی مقوی خانگی (یک کاسه)", cal: 170 },
+            { name: "سالاد فصل بدون سس (روغن زیتون و آبلیمو)", cal: 45 },
+            { name: "سیب‌زمینی آب‌پز (یک عدد متوسط)", cal: 110 }
+        ];
+
+        const megaWorkoutPoolMale = {
+            sixpack: [
+                [
+                    { name: 'پلانک شکمی پیشرفته ایزومتریک', baseDuration: 60, category: 'فشار حداکثری میان‌تنه', desc: 'روی ساعد و پنجه پا قرار بگیرید. شکم و باسن را کاملاً منقبض کنید و اجازه ندهید کمر آویزان شود. نفس‌گیری منظم داشته باشید.', icon: 'fa-ruler-horizontal' },
+                    { name: 'کرانچ معکوس سرعتی', baseDuration: 55, category: 'چربی‌سوزی زیرشکم', desc: 'به پشت بخوابید، زانوها خم و جفت به سمت سینه بالا بیاورید و بدون تاب دادن کمر، لگن را به آرامی بالا ببرید.', icon: 'fa-bed' },
+                    { name: 'کوهنورد انفجاری (Mountain Climber)', baseDuration: 60, category: 'کاردیو شکم فشرده', desc: 'در حالت شنا قرار بگیرید و به نوبت زانوها را با حداکثر سرعت و قدرت به سمت سینه پرتاب کنید.', icon: 'fa-fire' },
+                    { name: 'چرخش روسی سرعتی با وزنه', baseDuration: 50, category: 'عضلات اریب و پهلو', desc: 'بالاتنه را کمی به عقب بدهید، زانوها خم و پاها معلق؛ با چرخش منظم بالاتنه، پهلوها را تحت فشار بگذارید.', icon: 'fa-sync' },
+                    { name: 'پلانک از پهلو پویا', baseDuration: 45, category: 'تفکیک پهلو', desc: 'روی یک ساعد قرار بگیرید و لگن را با کنترل بالا و پایین ببرید تا فشار موضعی روی دیواره شکم اعمال شود.', icon: 'fa-shield-alt' },
+                    { name: 'دراز و نشست قدرتی فشرده', baseDuration: 50, category: 'بالاتنه شکم', desc: 'با دستان ضربدری روی سینه، بالا بیایید و با انقباض حداکثری عضلات راست شکمی به حالت شروع بازگردید.', icon: 'fa-child' }
+                ],
+                [
+                    { name: 'برپی سرعتی چربی‌سوز', baseDuration: 55, category: 'کالری‌سوزی حداکثری ۱ ماهه', desc: 'به حالت اسکوات نشسته، پاها را به عقب پرتاب کنید (شنا)، سریع جمع کرده و با تمام قدرت به هوا بپرید.', icon: 'fa-bolt' },
+                    { name: 'طناب‌زنی سرعتی (بدون طناب)', baseDuration: 60, category: 'هوازی فوق‌سنگین', desc: 'با ریتم تند روی پنجه پا بپرید و دستانتان را طوری حرکت دهید انگار طناب واقعی می‌زنید.', icon: 'fa-running' },
+                    { name: 'اسکوات پرشی انفجاری', baseDuration: 50, category: 'پایین‌تنه و هوازی', desc: 'از اسکوات عمیق با قدرت به سمت بالا بپرید و در زمان فرود زانوها را برای جذب ضربه خم کنید.', icon: 'fa-arrow-up' },
+                    { name: 'کرانچ دوچرخه خوابیده', baseDuration: 55, category: 'شکم و پهلو متراکم', desc: 'آرنج دست راست را به زانو چپ نزدیک کنید و متناوباً سمت مخالف را تکرار کنید.', icon: 'fa-sync' },
+                    { name: 'پلانک آپ-داون (پویا)', baseDuration: 50, category: 'استقامت کل بدن', desc: 'به نوبت از حالت ساعد به کف دست جابجا شوید و سعی کنید لگن کمترین چرخش را داشته باشد.', icon: 'fa-ruler-horizontal' },
+                    { name: 'پروانه سرعتی هوازی', baseDuration: 60, category: 'چربی‌سوزی کل بدن', desc: 'همزمان با پرش، دست‌ها بالای سر و پاها باز و بسته شوند تا ضربان قلب به اوج برسد.', icon: 'fa-child' }
+                ]
+            ],
+            shred: [
+                [
+                    { name: 'برپی سنگین (Burpee)', baseDuration: 60, category: 'مگا کالری‌سوزی', desc: 'پایه اصلی چربی‌سوزی سریع ۱ ماهه با ترکیب قدرت، استقامت و کاردیوی شدید.', icon: 'fa-bolt' },
+                    { name: 'کوهنورد ضربدری سرعتی', baseDuration: 60, category: 'آب کردن پهلوها', desc: 'زانو را به سمت آرنج مخالف هدایت کنید تا عضلات اریب شکمی به شدت درگیر شوند.', icon: 'fa-fire' },
+                    { name: 'اسکوات پرشی قدرتی', baseDuration: 55, category: 'عضله و هوازی', desc: 'حرکت انفجاری برای افزایش ترشح هورمون‌های چربی‌سوز.', icon: 'fa-arrow-up' },
+                    { name: 'شنا سوئدی انفجاری', baseDuration: 50, category: 'بالاتنه', desc: 'پایین آمدن کنترل‌شده و بالا آمدن با شتاب بالا جهت تقویت سینه و پشت بازو.', icon: 'fa-dumbbell' },
+                    { name: 'پرش درجا با زانو بلند', baseDuration: 60, category: 'کاردیو شدید', desc: 'ران‌ها را تا سطح لگن بالا بیاورید تا بیشترین کالری ممکن سوزانده شود.', icon: 'fa-running' },
+                    { name: 'پلانک ایزومتریک استقامتی', baseDuration: 50, category: 'محافظت و فرم میان‌تنه', desc: 'بدن کاملاً صاف، شکم منقبض و نگاه رو به زمین.', icon: 'fa-ruler-horizontal' }
+                ],
+                [
+                    { name: 'پرتاب پا و لانج پرشی', baseDuration: 55, category: 'سوزاندن چربی ران', desc: 'در حالت لانج با پرش جای پاها را عوض کنید تا عضلات پا به آتش کشیده شوند.', icon: 'fa-walking' },
+                    { name: 'پروانه سرعتی استقامتی', baseDuration: 60, category: 'کاردیو ممتد', desc: 'حفظ ریتم تند تنفسی برای پایداری ضربان قلب بالا.', icon: 'fa-child' },
+                    { name: 'کوهنورد کلاسیک پرسرعت', baseDuration: 60, category: 'چربی‌سوزی شکم', desc: 'سرعت پمپاژ بالا بدون افت فرم استاندارد.', icon: 'fa-fire' },
+                    { name: 'شنا دست‌جمع سخت', baseDuration: 45, category: 'پشت بازو و سینه', desc: 'فاصله دست‌ها به اندازه عرض شانه برای درگیری بیشتر پشت بازو.', icon: 'fa-shield-alt' },
+                    { name: 'پلانک پهلو با کشش', baseDuration: 45, category: 'پهلو', desc: 'حفظ تعادل کامل روی یک بازو و تمرکز روی انقباض پهلو.', icon: 'fa-sync' },
+                    { name: 'اسکوات ایزومتریک دیوار', baseDuration: 50, category: 'عضله‌سازی و چربی‌سوزی پا', desc: 'پشت به دیوار، زانوها زاویه ۹۰ درجه ایجاد کنند و ثابت بمانید.', icon: 'fa-arrow-down' }
+                ]
+            ],
+            muscle: [
+                [
+                    { name: 'شنا سوئدی استاندارد قدرتی', baseDuration: 60, category: 'حجم و فرم سینه', desc: 'دامنه حرکتی کامل؛ سینه نزدیک زمین شود و دست‌ها کاملاً صاف شوند.', icon: 'fa-dumbbell' },
+                    { name: 'اسکوات عمیق با وزن بدن', baseDuration: 60, category: 'حجم پایین‌تنه', desc: 'باسن به موازات زانو یا پایین‌تر بیاید تا چهارسر و باسن حداکثر رشد را تجربه کنند.', icon: 'fa-arrow-down' },
+                    { name: 'پوش‌آپ دست‌جمع', baseDuration: 50, category: 'پشت بازو قدرتمند', desc: 'آرنج‌ها نزدیک پهلو طی حرکت پایین و بالا روند.', icon: 'fa-shield-alt' },
+                    { name: 'لانج رو به جلو پمپاژی', baseDuration: 55, category: 'تفکیک چهارسر ران', desc: 'بدون بازگشت کامل به بالا، چند پالس کوچک در پایین حرکت اجرا کنید.', icon: 'fa-walking' },
+                    { name: 'پلانک شکمی پیشرفته', baseDuration: 50, category: 'میان‌تنه', desc: 'انقباض صددرصدی عضلات شکم و قفسه سینه.', icon: 'fa-ruler-horizontal' },
+                    { name: 'برپی سرعتی فرم‌دهنده', baseDuration: 50, category: 'چربی‌سوزی حین عضله‌سازی', desc: 'حفظ استقامت عضلانی کل بدن.', icon: 'fa-bolt' }
+                ],
+                [
+                    { name: 'شنای شیب‌دار دست‌باز', baseDuration: 55, category: 'بخش خارجی سینه', desc: 'تمرکز بر پهنای عضلات سینه با کنترل کامل.', icon: 'fa-dumbbell' },
+                    { name: 'اسکوات پرشیتی', baseDuration: 50, category: 'قدرت انفجاری پا', desc: 'پرش کوتاه از پایین اسکوات جهت توسعه فیبرهای تندانقباض.', icon: 'fa-arrow-up' },
+                    { name: 'شنا الماسی', baseDuration: 45, category: 'پشت بازو کلفت', desc: 'شست‌ها و انگشتان اشاره به شکل الماس روی زمین قرار گیرند.', icon: 'fa-shield-alt' },
+                    { name: 'کوهنورد قدرتی', baseDuration: 55, category: 'شکم خشک', desc: 'تمرکز بر اجرای دقیق و عمیق.', icon: 'fa-fire' },
+                    { name: 'لانج معکوس', baseDuration: 50, category: 'باسن و همستینگ', desc: 'قدم به عقب با کنترل کامل تعادل.', icon: 'fa-walking' },
+                    { name: 'پلانک پهلو آرنجی', baseDuration: 45, category: 'پهلو', desc: 'حفظ خط صاف بدن از سر تا پا.', icon: 'fa-shield-alt' }
+                ]
+            ]
+        };
+
+        const megaWorkoutPoolFemale = {
+            shred: [
+                [
+                    { name: 'پروانه هوازی سرعتی', baseDuration: 60, category: 'چربی‌سوزی کل بدن', desc: 'پرش طرفین با ریتم بالا و تنفس منظم.', icon: 'fa-child' },
+                    { name: 'برپی زنانه فشرده', baseDuration: 55, category: 'کالری‌سوزی فوق‌العاده ۱ ماهه', desc: 'نسخه بهینه‌شده برپی؛ اسکوات، قدم به عقب، و پرش بالا.', icon: 'fa-bolt' },
+                    { name: 'کوهنورد هوازی متراکم', baseDuration: 60, category: 'شکم و پهلو تخت', desc: 'سرعت بالای پاها برای سوزاندن چربی‌های پهلو و شکم.', icon: 'fa-fire' },
+                    { name: 'پرش درجا با زانو بالا', baseDuration: 50, category: 'کاردیو سوزاننده', desc: 'دویدن پرانرژی درجا.', icon: 'fa-running' },
+                    { name: 'اسکوات سومو پرشی', baseDuration: 45, category: 'فرم پایین‌تنه و چربی‌سوزی', desc: 'پاهای بازتر از عرض شانه و پرش ملایم.', icon: 'fa-arrow-up' },
+                    { name: 'پلانک ایزومتریک شکمی', baseDuration: 50, category: 'سفت کردن شکم', desc: 'حفظ انقباض عمقی شکم.', icon: 'fa-ruler-horizontal' }
+                ],
+                [
+                    { name: 'کیک‌بک ایستاده سرعتی', baseDuration: 55, category: 'فرم باسن و پهلو', desc: 'پرتاب پا به عقب و طرفین با تمرکز روی فرم لگن.', icon: 'fa-walking' },
+                    { name: 'پروانه استقامتی', baseDuration: 60, category: 'کالری‌سوزی', desc: 'حفظ ضربان قلب در محدوده چربی‌سوزی.', icon: 'fa-child' },
+                    { name: 'لانج متناوب پرشی', baseDuration: 50, category: 'ران و باسن', desc: 'پرش و جابجایی کنترل‌شده پاها.', icon: 'fa-arrow-up' },
+                    { name: 'کرانچ شکم خوابیده', baseDuration: 50, category: 'شکم', desc: 'بالا آوردن سر و شانه با انقباض مستقیم.', icon: 'fa-bed' },
+                    { name: 'کوهنورد ضربدری', baseDuration: 50, category: 'پهلو', desc: 'زانو به آرنج مخالف با ریتم یکنواخت.', icon: 'fa-fire' },
+                    { name: 'پلانک از پهلو', baseDuration: 45, category: 'تفکیک پهلو', desc: 'ثابت روی ساعد برای فرم‌دهی.', icon: 'fa-shield-alt' }
+                ]
+            ],
+            breast: [
+                [
+                    { name: 'پرس سینه خوابیده خانگی با بطری/وزنه', baseDuration: 60, category: 'فرم‌دهی و لیفت سینه', desc: 'به پشت بخوابید، وزنه‌ها را از بالای سینه به سمت بالا پرس کنید.', icon: 'fa-dumbbell' },
+                    { name: 'شنا روی زانو کنترل‌شده', baseDuration: 50, category: 'عضلات سینه', desc: 'روی زانوها قرار بگیرید و شنای اصولی برای لیفت بالاتنه انجام دهید.', icon: 'fa-child' },
+                    { name: 'پروانه سینه ایستاده', baseDuration: 55, category: 'عضلات پکتورال', desc: 'دست‌ها را باز کنید و با انقباض سینه به هم نزدیک کنید.', icon: 'fa-shield-alt' },
+                    { name: 'پلانک شکمی', baseDuration: 50, category: 'استقامت فرم', desc: 'سفت کردن بالاتنه و میان‌تنه.', icon: 'fa-ruler-horizontal' },
+                    { name: 'شنای ایزومتریک سینه', baseDuration: 45, category: 'توقف در پایین حرکت', desc: 'چند ثانیه مکث در پایین‌ترین نقطه شنا.', icon: 'fa-dumbbell' },
+                    { name: 'کالری‌سوزی هوازی سبک', baseDuration: 50, category: 'کاهش چربی موضعی', desc: 'پرش درجا با ریتم ملایم.', icon: 'fa-running' }
+                ],
+                [
+                    { name: 'پرس سینه دست‌جمع', baseDuration: 55, category: 'بخش داخلی سینه', desc: 'کنترل کامل وزنه حین اجرای حرکت.', icon: 'fa-dumbbell' },
+                    { name: 'شنای شیب‌دار دیواری', baseDuration: 50, category: 'بالاتنه', desc: 'فشار به دیوار با کنترل روی عضلات سینه.', icon: 'fa-child' },
+                    { name: 'پروانه سینه خم', baseDuration: 50, category: 'پشت و سینه', desc: 'کشش دست‌ها با زاویه ملایم بالاتنه.', icon: 'fa-shield-alt' },
+                    { name: 'کوهنورد آرام', baseDuration: 50, category: 'شکم', desc: 'اجرای کنترل‌شده و بدون شتاب.', icon: 'fa-fire' },
+                    { name: 'پلانک پهلو', baseDuration: 45, category: 'تعادل', desc: 'حفظ تعادل و تقویت عضلات عمقی.', icon: 'fa-shield-alt' },
+                    { name: 'پرش پروانه', baseDuration: 60, category: 'هوازی', desc: 'ریتم تند برای شادابی و کالری‌سوزی.', icon: 'fa-child' }
+                ]
+            ],
+            buttocks: [
+                [
+                    { name: 'پل باسن تک‌پا (Hip Thrust)', baseDuration: 60, category: 'حجم و فرم‌دهی باسن', desc: 'به پشت بخوابید، لگن را بالا بیاورید و در اوج حرکت باسن را کاملاً منقبض کنید.', icon: 'fa-child' },
+                    { name: 'دانکی کیک چهار دست و پا', baseDuration: 55, category: 'لیفت و فرم لگن', desc: 'در حالت چهار دست و پا، کف پا را به سمت سقف فشار دهید.', icon: 'fa-arrow-up' },
+                    { name: 'اسکوات سومو عمیق', baseDuration: 60, category: 'عضلات داخلی ران و باسن', desc: 'پاهای بازتر از شانه برای درگیری حداکثری عضلات باسن.', icon: 'fa-child' },
+                    { name: 'کیک‌بک پهلو', baseDuration: 50, category: 'بخش خارجی باسن', desc: 'پرتاب پا به طرفین برای فرم‌دهی خط لگن.', icon: 'fa-walking' },
+                    { name: 'لانج معکوس', baseDuration: 50, category: 'همستینگ و باسن', desc: 'قدم به عقب و پایین آمدن کنترل‌شده.', icon: 'fa-arrow-down' },
+                    { name: 'پلانک شکم', baseDuration: 45, category: 'میان‌تنه', desc: 'ثابت و منقبض.', icon: 'fa-ruler-horizontal' }
+                ],
+                [
+                    { name: 'پل باسن با نگه داشتن', baseDuration: 60, category: 'ایزومتریک باسن', desc: 'در بالاترین نقطه پل باسن، ۱۰ ثانیه مکث و انقباض شدید داشته باشید.', icon: 'fa-child' },
+                    { name: 'اسکوات پرشی ملایم', baseDuration: 50, category: 'انفجار عضلانی باسن', desc: 'پرش کوتاه از اسکوات برای تحریک رشد عضلانی.', icon: 'fa-bolt' },
+                    { name: 'دانکی کیک ضربدری', baseDuration: 50, category: 'فرم لگن', desc: 'فشار پا به صورت مایل جهت درگیری بخش خارجی باسن.', icon: 'fa-arrow-up' },
+                    { name: 'کوهنورد', baseDuration: 50, category: 'شکم و کاردیو', desc: 'سرعت متوسط و پایدار.', icon: 'fa-fire' },
+                    { name: 'لانج پیاده‌رو', baseDuration: 55, category: 'ران و باسن', desc: 'قدم‌های بلند و تمرکز روی تعادل.', icon: 'fa-walking' },
+                    { name: 'پلانک پهلو', baseDuration: 45, category: 'پهلو', desc: 'ثابت و متمرکز.', icon: 'fa-shield-alt' }
+                ]
+            ],
+            muscle: [
+                [
+                    { name: 'اسکوات قدرتی بانوان متراکم', baseDuration: 60, category: 'عضله‌سازی متقارن', desc: 'اسکوات عمیق و اصولی برای فرم‌دهی کلی پایین‌تنه.', icon: 'fa-child' },
+                    { name: 'لانج رو به جلو سرعتی', baseDuration: 55, category: 'ران و لگن', desc: 'قدم‌های پمپاژی برای تفکیک عضلات پا.', icon: 'fa-walking' },
+                    { name: 'پل باسن', baseDuration: 60, category: 'باسن', desc: 'انقباض بالا برای حجم‌دهی باسن.', icon: 'fa-arrow-up' },
+                    { name: 'شنا روی زانو', baseDuration: 50, category: 'بالاتنه', desc: 'کنترل کامل بازو و سینه.', icon: 'fa-dumbbell' },
+                    { name: 'کوهنورد', baseDuration: 50, category: 'شکم', desc: 'پرش پا با ریتم منظم.', icon: 'fa-fire' },
+                    { name: 'پلانک', baseDuration: 50, category: 'هسته بدن', desc: 'ایزومتریک استاندارد.', icon: 'fa-ruler-horizontal' }
+                ],
+                [
+                    { name: 'اسکوات سومو', baseDuration: 60, category: 'فرم پایین‌تنه', desc: 'پاهای باز و تمرکز روی ران داخلی.', icon: 'fa-child' },
+                    { name: 'دانکی کیک', baseDuration: 55, category: 'باسن', desc: 'فشار رو به عقب باسن.', icon: 'fa-arrow-up' },
+                    { name: 'پروانه', baseDuration: 60, category: 'هوازی', desc: 'ریتم تند برای چربی‌سوزی.', icon: 'fa-child' },
+                    { name: 'پوش‌آپ دیواری', baseDuration: 50, category: 'سینه و دست', desc: 'فشار به دیوار با کنترل.', icon: 'fa-dumbbell' },
+                    { name: 'کرانچ', baseDuration: 50, category: 'شکم', desc: 'بالا کشیدن شانه.', icon: 'fa-bed' },
+                    { name: 'پلانک پهلو', baseDuration: 45, category: 'پهلو', desc: 'تعادل پایدار.', icon: 'fa-shield-alt' }
+                ]
+            ]
+        };
+
+        const weeklyDietMale = {
+            sixpack: {
+                0: { name: "شنبه", breakfast: "۲ عدد تخم‌مرغ آب‌پز + نان سنگک + چای سبز", lunch: "۱ کفگیر برنج کته + سینه مرغ گریل + سالاد", dinner: "سینه مرغ ریش‌ریش + سالاد کاهو بزرگ" },
+                1: { name: "یکشنبه", breakfast: "عدسی پر پروتئین + نان", lunch: "خورشت قرمه سبزی کم‌روغن + ۱ کفگیر برنج", dinner: "تن ماهی بدون روغن + سبزیجات" },
+                2: { name: "دوشنبه", breakfast: "املت سفیده تخم‌مرغ + نان جو", lunch: "جوجه کباب سینه + سالاد فصل", dinner: "ماست یونانی + خیار و نعناع" },
+                3: { name: "سه‌شنبه", breakfast: "پنیر کم‌چرب + گردو + نان سبوس‌دار", lunch: "ماکارونی رژیمی کم‌چرب", dinner: "سوپ جو سبزیجات سبک" },
+                4: { name: "چهارشنبه", breakfast: "شیر کم‌چرب + موز", lunch: "گوشت گوساله آب‌پز + نان", dinner: "سیب‌زمینی آب‌پز + تخم‌مرغ آب‌پز" },
+                5: { name: "پنجشنبه", breakfast: "کره بادام‌زمینی + نان تست", lunch: "خورشت قیمه کم‌روغن + برنج", dinner: "سالاد پروتئینی مرغ" },
+                6: { name: "جمعه", breakfast: "نیمرو با حداقل روغن + نان سنگک", lunch: "ماهی گریل شده + برنج کته", dinner: "سوپ مرغ خانگی" }
+            },
+            shred: {
+                0: { name: "شنبه", breakfast: "تخم‌مرغ آب‌پز + نان سنگک + چای", lunch: "سینه مرغ گریل + سالاد بدون سس", dinner: "سوپ سبزیجات رژیمی" },
+                1: { name: "یکشنبه", breakfast: "عدسی رژیمی + نان جو", lunch: "خورشت سبزی کم‌چرب + مقدار کم برنج", dinner: "تن ماهی بدون روغن + خیار و گوجه" },
+                2: { name: "دوشنبه", breakfast: "پنیر کم‌چرب + گوجه و خیار", lunch: "جوجه کباب + سالاد فصل", dinner: "ماست کم‌چرب + چند قطره آبلیمو" },
+                3: { name: "سه‌شنبه", breakfast: "شیر کم‌چرب + ۲ عدد خرما", lunch: "مرغ آب‌پز + برنج کته نصف کفگیر", dinner: "سالاد کاهو و کلم بدون سس" },
+                4: { name: "چهارشنبه", breakfast: "تخم‌مرغ آب‌پز + نان تست", lunch: "گوشت گوساله گریل + سبزیجات", dinner: "سیب‌زمینی آب‌پز کوچک" },
+                5: { name: "پنجشنبه", breakfast: "املت گوجه‌فرنگی رژیمی", lunch: "خورشت قیمه رژیمی + برنج کم", dinner: "سوپ جو سبک" },
+                6: { name: "جمعه", breakfast: "نان سنگک + پنیر و سبزی", lunch: "ماهی سفید گریل + سالاد شیرازی", dinner: "سالاد تن ماهی" }
+            },
+            muscle: {
+                0: { name: "شنبه", breakfast: "۳ عدد تخم‌مرغ کامل + ۲ کف دست نان سنگک", lunch: "۱.۵ کفگیر برنج + ۱۵۰ گرم مرغ گریل + سالاد", dinner: "سیب‌زمینی بزرگ آب‌پز + تن ماهی" },
+                1: { name: "یکشنبه", breakfast: "عدسی پر از سیب‌زمینی + نان", lunch: "خورشت قرمه سبزی پرگوشت + برنج", dinner: "گوشت چرخ‌کرده کبابی + سبزیجات" },
+                2: { name: "دوشنبه", breakfast: "املت ۳ تخم‌مرغی با قارچ", lunch: "جوجه کباب سینه مرغ + برنج", dinner: "ماست پرچرب + موز" },
+                3: { name: "سه‌شنبه", breakfast: "پنیر لیقوان + گردو + نان", lunch: "ماکارونی پرگوشت + سالاد", dinner: "سینه مرغ ریش‌ریش + کاهو" },
+                4: { name: "چهارشنبه", breakfast: "شیر + موز + خرما", lunch: "استیک گوشت گوساله + پوره", dinner: "سوپ جو مقوی" },
+                5: { name: "پنجشنبه", breakfast: "کره بادام‌زمینی + نان تست جو", lunch: "خورشت قیمه با گوشت لخم + برنج", dinner: "املت قارچ و تخم‌مرغ" },
+                6: { name: "جمعه", breakfast: "نیمرو (۲ عدد) + نان سنگک", lunch: "ماهی گریل زعفرانی + برنج", dinner: "سالاد مرغ و تخم‌مرغ" }
+            }
+        };
+
+        const weeklyDietFemale = {
+            shred: {
+                0: { name: "شنبه", breakfast: "۱ عدد تخم‌مرغ آب‌پز + نان سبوس‌دار + چای سبز", lunch: "۱ کفگیر برنج کته + سینه مرغ گریل + سالاد", dinner: "سوپ سبزیجات سبک" },
+                1: { name: "یکشنبه", breakfast: "عدسی گرم و کم‌چرب + نان", lunch: "قرمه سبزی کم‌روغن + نصف کفگیر برنج", dinner: "تن ماهی بدون روغن + سبزی" },
+                2: { name: "دوشنبه", breakfast: "پنیر کم‌چرب + گردو + نان", lunch: "جوجه کباب + سالاد فصل", dinner: "املت رژیمی گوجه" },
+                3: { name: "سه‌شنبه", breakfast: "شیر کم‌چرب + موز کوچک", lunch: "پاستا سبوس‌دار با سس گوجه خانگی", dinner: "ماست یونانی + خیارشور" },
+                4: { name: "چهارشنبه", breakfast: "کره بادام‌زمینی + نان تست", lunch: "گوشت بوقلمون آب‌پز + نان", dinner: "سالاد سزار رژیمی" },
+                5: { name: "پنجشنبه", breakfast: "املت قارچ رژیمی", lunch: "خورشت قیمه کم‌چرب + برنج", dinner: "سیب‌زمینی آب‌پز متوسط" },
+                6: { name: "جمعه", breakfast: "نان و پنیر و نعناع", lunch: "ماهی قزل‌آلا گریل + سالاد شیرازی", dinner: "سوپ جو سبک" }
+            },
+            breast: {
+                0: { name: "شنبه", breakfast: "تخم‌مرغ آب‌پز + شیر کم‌چرب + نان", lunch: "برنج کته + سینه مرغ گریل + سالاد", dinner: "خوراک مرغ و قارچ" },
+                1: { name: "یکشنبه", breakfast: "عدسی مقوی + نان سنگک", lunch: "خورشت بادمجان رژیمی با مرغ + برنج", dinner: "ماهی گریل شده + سبزیجات" },
+                2: { name: "دوشنبه", breakfast: "املت قارچ و پنیر + نان جو", lunch: "جوجه کباب سینه + سالاد", dinner: "ماست و خیار + مغز گردو" },
+                3: { name: "سه‌شنبه", breakfast: "شیر و موز + ۲ عدد خرما", lunch: "ماکارونی با گوشت چرخ‌کرده کم‌چرب", dinner: "سوپ مرغ مقوی" },
+                4: { name: "چهارشنبه", breakfast: "کره بادام‌زمینی + تست جو", lunch: "گوشت گوساله کبابی + سبزی", dinner: "سالاد مرغ پروتئینی" },
+                5: { name: "پنجشنبه", breakfast: "تخم‌مرغ آب‌پز + پنیر و گردو", lunch: "خورشت فسنجان ملایم (رژیمی) + برنج", dinner: "املت سبزیجات" },
+                6: { name: "جمعه", breakfast: "نیمرو رژیمی + نان سنگک", lunch: "ماهی کبابی + برنج زعفرانی", dinner: "سالاد فصل با مرغ گریل" }
+            },
+            buttocks: {
+                0: { name: "شنبه", breakfast: "تخم‌مرغ آب‌پز کامل + موز + نان", lunch: "برنج کته + سینه مرغ گریل + سیب‌زمینی", dinner: "خوراک لوبیا چیتی با قارچ" },
+                1: { name: "یکشنبه", breakfast: "عدسی پر از سیب‌زمینی + نان", lunch: "قرمه سبزی پرگوشت + برنج کته", dinner: "تن ماهی + سیب‌زمینی آب‌پز" },
+                2: { name: "دوشنبه", breakfast: "املت تخم‌مرغ و قارچ + نان سنگک", lunch: "جوجه کباب سینه مرغ + برنج", dinner: "ماست یونانی + موز خرد شده" },
+                3: { name: "سه‌شنبه", breakfast: "پنیر + کره بادام‌زمینی + نان", lunch: "ماکارونی با گوشت و پنیر رژیمی", dinner: "سینه مرغ آب‌پز + سبزیجات" },
+                4: { name: "چهارشنبه", breakfast: "شیر و خرما + نان سبوس‌دار", lunch: "استیک گوشت گوساله + پوره سیب‌زمینی", dinner: "سوپ جو با مرغ ریش‌ریش" },
+                5: { name: "پنجشنبه", breakfast: "املت گوجه‌فرنگی + نان", lunch: "خورشت قیمه با گوشت لخم + برنج", dinner: "سیب‌زمینی تنوری + پنیر کم‌چرب" },
+                6: { name: "جمعه", breakfast: "نیمرو (۲ عدد) + نان تازه", lunch: "ماهی قزل‌آلا + برنج کته", dinner: "سالاد پروتئینی تخم‌مرغ و مرغ" }
+            },
+            muscle: {
+                0: { name: "شنبه", breakfast: "تخم‌مرغ آب‌پز + نان سنگک + شیر", lunch: "برنج کته + سینه مرغ گریل + سالاد", dinner: "سوپ جو مقوی" },
+                1: { name: "یکشنبه", breakfast: "عدسی گرم + نان", lunch: "خورشت سبزی با گوشت لخم + برنج", dinner: "تن ماهی + سبزیجات" },
+                2: { name: "دوشنبه", breakfast: "پنیر کم‌چرب + گردو + نان", lunch: "جوجه کباب + سالاد فصل", dinner: "ماست کم‌چرب + موز" },
+                3: { name: "سه‌شنبه", breakfast: "کره بادام‌زمینی + نان تست", lunch: "ماکارونی رژیمی پرگوشت", dinner: "سینه مرغ آب‌پز" },
+                4: { name: "چهارشنبه", breakfast: "شیر و موز + خرما", lunch: "گوشت گوساله گریل + پوره", dinner: "سالاد مرغ رژیمی" },
+                5: { name: "پنجشنبه", breakfast: "املت قارچ + نان", lunch: "خورشت قیمه + برنج", dinner: "سیب‌زمینی آب‌پز" },
+                6: { name: "جمعه", breakfast: "نیمرو + نان سنگک", lunch: "ماهی گریل + برنج", dinner: "سوپ سبزیجات" }
+            }
+        };
+
+        let userProfile = JSON.parse(localStorage.getItem('nuvoraFitProfile'));
+        let weightHistory = JSON.parse(localStorage.getItem('nuvoraWeightHistory')) || [];
+        let foodDiary = JSON.parse(localStorage.getItem('nuvoraFoodDiary')) || [];
+        
+        let weightChartObj = null;
+        let calorieChartObj = null;
+        let guidedIndex = 0;
+        let guidedTimerInterval = null;
+        let timeLeft = 0;
+        let isTimerRunning = false;
+
+        window.onload = function() {
+            updateFocusOptions();
+            if(userProfile) {
+                document.getElementById('onboardingPage').classList.remove('active');
+                document.getElementById('dashboardPage').classList.add('active');
+                document.getElementById('bottomNav').style.display = 'flex';
+                loadDashboard();
+                initCharts();
+                checkTimeForNotification();
+            }
+        };
+
+        function updateFocusOptions() {
+            const gender = document.getElementById('gender').value;
+            const focusSelect = document.getElementById('focusArea');
+            focusSelect.innerHTML = '';
+
+            if(gender === 'male') {
+                focusSelect.innerHTML = `
+                    <option value="sixpack">ساخت سیکس‌پک</option>
+                    <option value="shred">چربی‌سوزی</option>
+                    <option value="muscle">عضله‌سازی</option>
+                `;
+            } else {
+                focusSelect.innerHTML = `
+                    <option value="shred">چربی‌سوزی</option>
+                    <option value="breast">فرم‌دهی سینه</option>
+                    <option value="buttocks">فرم‌دهی باسن</option>
+                    <option value="muscle">عضله‌سازی</option>
+                `;
+            }
+        }
+
+        function openOnboarding() {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById('onboardingPage').classList.add('active');
+            document.getElementById('bottomNav').style.display = 'none';
+            if(userProfile) {
+                document.getElementById('age').value = userProfile.age || '';
+                document.getElementById('height').value = userProfile.height || '';
+                document.getElementById('weight').value = userProfile.weight || '';
+                document.getElementById('gender').value = userProfile.gender || 'male';
+                updateFocusOptions();
+                document.getElementById('focusArea').value = userProfile.focus || 'sixpack';
+                document.getElementById('difficultyLevel').value = userProfile.difficulty || 'hard';
+            }
+        }
+
+        function saveProfile() {
+            const age = parseInt(document.getElementById('age').value);
+            const height = parseInt(document.getElementById('height').value);
+            const weight = parseInt(document.getElementById('weight').value);
+            const gender = document.getElementById('gender').value;
+            const focus = document.getElementById('focusArea').value;
+            const difficulty = document.getElementById('difficultyLevel').value;
+
+            if(!age || !height || !weight) { alert('لطفاً تمامی فیلدها را به دقت پر کنید!'); return; }
+
+            const heightM = height / 100;
+            const bmi = parseFloat((weight / (heightM * heightM)).toFixed(1));
+            
+            let idealWeightMin, idealWeightMax;
+            if(gender === 'female') {
+                const base = 21.5;
+                idealWeightMin = Math.round(base * (heightM * heightM) - 1);
+                idealWeightMax = Math.round(base * (heightM * heightM) + 4);
+            } else {
+                const base = 23.5;
+                idealWeightMin = Math.round(base * (heightM * heightM) - 1);
+                idealWeightMax = Math.round(base * (heightM * heightM) + 5);
+            }
+            const targetRefWeight = (idealWeightMin + idealWeightMax) / 2;
+
+            let bmr = (10 * weight) + (6.25 * height) - (5 * age);
+            bmr = gender === 'male' ? bmr + 5 : bmr - 161;
+            
+            let deficit = 400;
+            if(difficulty === 'normal') deficit = 350;
+            else if(difficulty === 'hard') deficit = gender === 'female' ? 650 : 850;
+            else if(difficulty === 'extreme') deficit = gender === 'female' ? 950 : 1200;
+
+            let tdee = Math.round(bmr * 1.12);
+            if(weight > targetRefWeight) {
+                tdee -= deficit;
+            } else {
+                tdee -= 200;
+            }
+            if(tdee < 1050) tdee = 1050;
+
+            const existingStartDate = userProfile ? userProfile.startDate : new Date().getTime();
+            userProfile = { age, height, weight, gender, focus, difficulty, bmi, targetRefWeight, targetCal: tdee, startDate: existingStartDate };
+            
+            const todayStr = new Date().toLocaleDateString('fa-IR');
+            const lastRecord = weightHistory[weightHistory.length - 1];
+            if(!lastRecord || lastRecord.date !== todayStr) {
+                weightHistory.push({ date: todayStr, weight: weight });
+            } else {
+                lastRecord.weight = weight;
+            }
+            
+            localStorage.setItem('nuvoraFitProfile', JSON.stringify(userProfile));
+            localStorage.setItem('nuvoraWeightHistory', JSON.stringify(weightHistory));
+            location.reload();
+        }
+
+        function loadDashboard() {
+            const todayStr = new Date().toLocaleDateString('fa-IR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            document.getElementById('dateDisplay').innerText = todayStr;
+
+            const jsDay = new Date().getDay();
+            const persianDays = ['یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه', 'شنبه'];
+            document.getElementById('todayDayName').innerText = persianDays[jsDay];
+
+            document.getElementById('bmiValue').innerText = userProfile.bmi;
+            document.getElementById('tdeeValue').innerText = userProfile.targetCal;
+            document.getElementById('targetCalDisplay').innerText = userProfile.targetCal;
+
+            let weightDiff = userProfile.weight - userProfile.targetRefWeight;
+            let diffText = "";
+            let bmiStatus = "";
+            const diffNameMap = { normal: 'عادی و متعادل', hard: 'فشرده (۱ ماهه)', extreme: 'فوق‌سنگین (آزمون آتشین)' };
+
+            if (weightDiff > 1) {
+                diffText = `فاصله تا هدف: حدود <strong style="color:var(--danger)">${Math.round(weightDiff)} کیلوگرم اضافه وزن</strong> | سطح سختی: <strong>${diffNameMap[userProfile.difficulty || 'hard']}</strong>`;
+                bmiStatus = "وضعیت: برنامه چربی‌سوزی فعال";
+            } else if (weightDiff < -1) {
+                diffText = `فاصله تا هدف: حدود <strong style="color:var(--warning)">${Math.abs(Math.round(weightDiff))} کیلوگرم کمبود</strong> | سطح سختی: <strong>${diffNameMap[userProfile.difficulty || 'hard']}</strong>`;
+                bmiStatus = "وضعیت: عضله‌سازی و حجم";
+            } else {
+                diffText = `فاصله تا هدف: <strong style="color:var(--success)">دقیقاً در نقطه ایده‌آل وزنی قرار دارید!</strong>`;
+                bmiStatus = "وضعیت: حفظ اوج آمادگی فیزیکی";
+            }
+            
+            document.getElementById('weightDiffText').innerHTML = diffText;
+            document.getElementById('bmiText').innerText = bmiStatus;
+
+            const msDiff = new Date().getTime() - userProfile.startDate;
+            const daysPassed = Math.floor(msDiff / (1000 * 60 * 60 * 24)) + 1;
+            document.getElementById('streakDays').innerText = daysPassed > 0 ? (daysPassed > 30 ? 30 : daysPassed) : 1;
+
+            loadWorkouts();
+            generateDynamicDietPlan();
+            updateDietUI();
+        }
+
+        function loadWorkouts() {
+            const list = document.getElementById('exerciseList');
+            list.innerHTML = '';
+            
+            const jsDay = new Date().getDay();
+            const poolIndex = jsDay % 2;
+            const diff = userProfile.difficulty || 'hard';
+            
+            let multiplier = 1.0;
+            if(diff === 'normal') multiplier = 0.80;
+            if(diff === 'extreme') multiplier = 1.25;
+
+            let currentWorkouts = [];
+            let focusTitleText = "";
+
+            if(userProfile.gender === 'male') {
+                const pool = megaWorkoutPoolMale[userProfile.focus] || megaWorkoutPoolMale.sixpack;
+                currentWorkouts = pool[poolIndex];
+                focusTitleText = `🔥 برنامه چربی‌سوزی آقایان (سطح: ${diff === 'normal' ? 'عادی' : diff === 'hard' ? 'فشرده' : 'فوق‌سنگین'})`;
+            } else {
+                const pool = megaWorkoutPoolFemale[userProfile.focus] || megaWorkoutPoolFemale.shred;
+                currentWorkouts = pool[poolIndex];
+                focusTitleText = `✨ برنامه چربی‌سوزی بانوان (سطح: ${diff === 'normal' ? 'عادی' : diff === 'hard' ? 'فشرده' : 'فوق‌سنگین'})`;
+            }
+
+            document.getElementById('workoutCategoryTitle').innerText = focusTitleText;
+
+            currentWorkouts.forEach(ex => {
+                const adjustedDuration = Math.round(ex.baseDuration * multiplier);
+                list.innerHTML += `
+                    <div class="exercise-card">
+                        <div class="exercise-header">
+                            <div class="exercise-icon"><i class="fas ${ex.icon}"></i></div>
+                            <div>
+                                <h4 style="color:var(--text-main); margin-bottom:3px; font-size: 1.05em;">${ex.name}</h4>
+                                <span style="font-size:0.8em; color:var(--success); font-weight:600;">${ex.category} | زمان: ${adjustedDuration} ثانیه</span>
+                            </div>
+                        </div>
+                        <p style="margin: 8px 0 0 0; font-size: 0.9em; color: var(--text-muted); line-height: 1.6;">${ex.desc}</p>
+                    </div>`;
+            });
+            document.getElementById('workoutDesc').innerText = "تمامی حرکات بالا با راهنمای اجرایی و متناسب با درجه سختی انتخابی شما بهینه‌سازی شده‌اند.";
+        }
+
+        function speakText(text) {
+            if ('speechSynthesis' in window) {
+                try {
+                    window.speechSynthesis.cancel();
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.lang = 'fa-IR';
+                    utterance.rate = 1.1; 
+                    utterance.pitch = 1.1;
+                    
+                    const voices = window.speechSynthesis.getVoices();
+                    const voice = voices.find(v => v.lang.includes('fa') || v.lang.includes('fa_IR'));
+                    if (voice) utterance.voice = voice;
+
+                    window.speechSynthesis.speak(utterance);
+                } catch (e) {
+                    console.log("Speech Error:", e);
+                }
+            }
+        }
+
+        function getCurrentActiveWorkoutsList() {
+            const jsDay = new Date().getDay();
+            const poolIndex = jsDay % 2;
+            const diff = userProfile.difficulty || 'hard';
+            let multiplier = 1.0;
+            if(diff === 'normal') multiplier = 0.80;
+            if(diff === 'extreme') multiplier = 1.25;
+
+            let rawList = [];
+            if(userProfile.gender === 'male') {
+                const pool = megaWorkoutPoolMale[userProfile.focus] || megaWorkoutPoolMale.sixpack;
+                rawList = pool[poolIndex];
+            } else {
+                const pool = megaWorkoutPoolFemale[userProfile.focus] || megaWorkoutPoolFemale.shred;
+                rawList = pool[poolIndex];
+            }
+
+            return rawList.map(ex => ({
+                ...ex,
+                duration: Math.round(ex.baseDuration * multiplier)
+            }));
+        }
+
+        function startGuidedWorkout() {
+            guidedIndex = 0;
+            document.getElementById('workoutModal').style.display = 'flex';
+            setupGuidedExercise();
+        }
+
+        function setupGuidedExercise() {
+            clearInterval(guidedTimerInterval);
+            isTimerRunning = false;
+            document.getElementById('gwActionBtn').innerText = "شروع تایمر";
+            document.getElementById('gwActionBtn').style.background = "var(--success)";
+
+            const currentWorkouts = getCurrentActiveWorkoutsList();
+            const ex = currentWorkouts[guidedIndex];
+            
+            timeLeft = ex.duration;
+            document.getElementById('gwTitle').innerText = ex.name;
+            document.getElementById('gwCategoryBadge').innerText = ex.category;
+            document.getElementById('gwDesc').innerText = ex.desc;
+            document.getElementById('gwIcon').className = `fas ${ex.icon}`;
+            document.getElementById('gwProgress').innerText = `حرکت ${guidedIndex + 1} از ${currentWorkouts.length}`;
+            updateTimerDisplay();
+            
+            speakText(`آماده باشید. ${ex.name}.`);
+        }
+
+        function updateTimerDisplay() {
+            const mins = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+            const secs = (timeLeft % 60).toString().padStart(2, '0');
+            document.getElementById('gwTimerDisplay').innerText = `${mins}:${secs}`;
+        }
+
+        function toggleGuidedTimer() {
+            const btn = document.getElementById('gwActionBtn');
+            if(isTimerRunning) {
+                clearInterval(guidedTimerInterval);
+                isTimerRunning = false;
+                btn.innerText = "ادامه تایمر";
+                btn.style.background = "var(--success)";
+            } else {
+                isTimerRunning = true;
+                btn.innerText = "توقف موقت";
+                btn.style.background = "var(--danger)";
+                
+                guidedTimerInterval = setInterval(() => {
+                    timeLeft--;
+                    updateTimerDisplay();
+                    
+                    if(timeLeft > 0 && timeLeft <= 10) {
+                        speakText(timeLeft.toString());
+                    }
+                    
+                    if(timeLeft <= 0) {
+                        clearInterval(guidedTimerInterval);
+                        isTimerRunning = false;
+                        speakText("پایان این حرکت. عالی بود!");
+                        setTimeout(() => {
+                            nextGuidedWorkout();
+                        }, 1200);
+                    }
+                }, 1000);
+            }
+        }
+
+        function nextGuidedWorkout() {
+            clearInterval(guidedTimerInterval);
+            const currentWorkouts = getCurrentActiveWorkoutsList();
+
+            guidedIndex++;
+            if(guidedIndex >= currentWorkouts.length) {
+                speakText("فوق‌العاده بود! تمرین امروز با موفقیت کامل شد.");
+                alert('فوق‌العاده بود! کالری‌سوزی جلسه امروز با ضریب تعیین‌شده ثبت شد.');
+                closeGuidedWorkout();
+            } else {
+                setupGuidedExercise();
+            }
+        }
+
+        function exitGuidedWorkoutToMenu() {
+            clearInterval(guidedTimerInterval);
+            if ('speechSynthesis' in window) {
+                try { window.speechSynthesis.cancel(); } catch(e) {}
+            }
+            document.getElementById('workoutModal').style.display = 'none';
+        }
+
+        function closeGuidedWorkout() {
+            exitGuidedWorkoutToMenu();
+        }
+
+        function changeMusicTrack() {
+            const selector = document.getElementById('musicSelector');
+            const audioPlayer = document.getElementById('workoutMusic');
+            audioPlayer.src = selector.value;
+            audioPlayer.play().catch(e => console.log("Auto-play blocked"));
+        }
+
+        function generateDynamicDietPlan() {
+            const jsDay = new Date().getDay();
+            const mapDayIndex = [6, 0, 1, 2, 3, 4, 5]; 
+            const todayIndex = mapDayIndex[jsDay];
+            
+            let dietDatabase = {};
+            if(userProfile.gender === 'male') {
+                dietDatabase = weeklyDietMale[userProfile.focus] || weeklyDietMale.sixpack;
+            } else {
+                dietDatabase = weeklyDietFemale[userProfile.focus] || weeklyDietFemale.shred;
+            }
+
+            const todayDiet = dietDatabase[todayIndex];
+            document.getElementById('dietDayTitle').innerText = todayDiet.name;
+
+            const box = document.getElementById('recommendedDiet');
+            const cal = userProfile.targetCal;
+            
+            box.innerHTML = `
+                <div class="diet-plan-box">
+                    <h4><i class="fas fa-sun"></i> صبحانه متناسب (حدود ${Math.round(cal * 0.25)} کالری)</h4>
+                    <p style="margin:0; color:#fff; font-size:0.95em;">${todayDiet.breakfast}</p>
+                </div>
+                <div class="diet-plan-box">
+                    <h4><i class="fas fa-utensils"></i> ناهار پروتئینی هدفمند (حدود ${Math.round(cal * 0.45)} کالری)</h4>
+                    <p style="margin:0; color:#fff; font-size:0.95em;">${todayDiet.lunch}</p>
+                </div>
+                <div class="diet-plan-box">
+                    <h4><i class="fas fa-moon"></i> شام سبک و چربی‌سوز (حدود ${Math.round(cal * 0.30)} کالری)</h4>
+                    <p style="margin:0; color:#fff; font-size:0.95em;">${todayDiet.dinner}</p>
+                </div>`;
+        }
+
+        function searchFood() {
+            const q = document.getElementById('foodSearch').value.trim();
+            const resBox = document.getElementById('searchResults');
+            resBox.innerHTML = '';
+            if(q.length < 2) { resBox.style.display = 'none'; return; }
+            const res = foodDatabase.filter(f => f.name.includes(q));
+            if(res.length > 0) {
+                resBox.style.display = 'block';
+                res.forEach(f => {
+                    resBox.innerHTML += `<div onclick="selectFood('${f.name}', ${f.cal})"><span>${f.name}</span> <span style="color:var(--success); font-weight:bold;">${f.cal} کالری</span></div>`;
+                });
+            } else { resBox.style.display = 'none'; }
+        }
+
+        function selectFood(name, cal) {
+            document.getElementById('foodName').value = name;
+            document.getElementById('foodCal').value = cal;
+            document.getElementById('foodSearch').value = '';
+            document.getElementById('searchResults').style.display = 'none';
+        }
+
+        function addFood() {
+            const name = document.getElementById('foodName').value.trim();
+            const cal = parseInt(document.getElementById('foodCal').value);
+            if(!name || isNaN(cal)) { alert('لطفاً نام غذا و مقدار کالری معتبر را وارد کنید.'); return; }
+            
+            const todayStr = new Date().toLocaleDateString('fa-IR');
+            foodDiary.push({ id: Date.now() + Math.random(), name, cal, date: todayStr });
+            localStorage.setItem('nuvoraFoodDiary', JSON.stringify(foodDiary));
+            
+            document.getElementById('foodName').value = '';
+            document.getElementById('foodCal').value = '';
+            updateDietUI();
+            initCharts();
+        }
+
+        function deleteFood(id) {
+            foodDiary = foodDiary.filter(item => item.id !== id);
+            localStorage.setItem('nuvoraFoodDiary', JSON.stringify(foodDiary));
+            updateDietUI();
+            initCharts();
+        }
+
+        function updateDietUI() {
+            const todayStr = new Date().toLocaleDateString('fa-IR');
+            const todayFoods = foodDiary.filter(f => f.date === todayStr);
+            const total = todayFoods.reduce((sum, item) => sum + item.cal, 0);
+            
+            document.getElementById('consumedCalories').innerText = total;
+            document.getElementById('targetCalDisplay').innerText = userProfile.targetCal;
+
+            const penaltyAlert = document.getElementById('caloriePenaltyAlert');
+            const penaltyWalkText = document.getElementById('penaltyWalkText');
+
+            if(total > userProfile.targetCal) {
+                penaltyAlert.style.display = 'block';
+                penaltyWalkText.innerText = "🚨 اخطار: به دلیل عبور از کالری مجاز، هدف قدم‌شمار برای جبران افزایش یافت!";
+            } else {
+                penaltyAlert.style.display = 'none';
+                penaltyWalkText.innerText = "وضعیت دریافت کالری در محدوده تعیین‌شده قرار دارد.";
+            }
+
+            const ul = document.getElementById('foodListUl');
+            ul.innerHTML = '';
+            if(todayFoods.length === 0) {
+                ul.innerHTML = `<p style="text-align:center; color:var(--text-muted); margin:10px 0;">هنوز وعده‌ای برای امروز ثبت نکرده‌اید.</p>`;
+                return;
+            }
+            todayFoods.forEach((f) => {
+                if(!f.id) f.id = Date.now() + Math.random();
+                ul.innerHTML += `
+                    <li>
+                        <span>${f.name} <strong style="color:var(--success);">(${f.cal} کالری)</strong></span>
+                        <button class="delete-food-btn" onclick="deleteFood(${f.id})"><i class="fas fa-trash"></i> حذف</button>
+                    </li>`;
+            });
+        }
+
+        function initCharts() {
+            const ctxW = document.getElementById('weightChart').getContext('2d');
+            if(weightChartObj) weightChartObj.destroy();
+            weightChartObj = new Chart(ctxW, {
+                type: 'line',
+                data: {
+                    labels: weightHistory.map(w => w.date),
+                    datasets: [{ label: 'وزن (kg)', data: weightHistory.map(w => w.weight), borderColor: '#9d4edd', backgroundColor: 'rgba(157, 78, 221, 0.15)', borderWidth: 3, fill: true, tension: 0.35, pointRadius: 5 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#fff' } } }, scales: { x: { ticks: { color: '#adb5bd' } }, y: { ticks: { color: '#adb5bd' } } } }
+            });
+
+            const ctxC = document.getElementById('calorieChart').getContext('2d');
+            const recentDates = [...new Set(foodDiary.map(f => f.date))].slice(-5);
+            const recentCals = recentDates.map(d => foodDiary.filter(f => f.date === d).reduce((s, i) => s + i.cal, 0));
+
+            if(calorieChartObj) calorieChartObj.destroy();
+            calorieChartObj = new Chart(ctxC, {
+                type: 'bar',
+                data: {
+                    labels: recentDates.length ? recentDates : ['امروز'],
+                    datasets: [{ label: 'کالری دریافتی', data: recentCals.length ? recentCals : [0], backgroundColor: '#06d6a0', borderRadius: 6 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#fff' } } }, scales: { x: { ticks: { color: '#adb5bd' } }, y: { ticks: { color: '#adb5bd' } } } }
+            });
+        }
+
+        function addWeightRecord() {
+            const w = document.getElementById('newWeightInput').value;
+            if(!w) return;
+            const weightVal = parseFloat(w);
+            weightHistory.push({ date: new Date().toLocaleDateString('fa-IR'), weight: weightVal });
+            userProfile.weight = weightVal;
+            userProfile.bmi = (weightVal / Math.pow(userProfile.height/100, 2)).toFixed(1);
+            localStorage.setItem('nuvoraFitProfile', JSON.stringify(userProfile));
+            localStorage.setItem('nuvoraWeightHistory', JSON.stringify(weightHistory));
+            document.getElementById('newWeightInput').value = '';
+            loadDashboard();
+            initCharts();
+            alert('وزن جدید با موفقیت ثبت شد!');
+        }
+
+        let walkTimer; let walkSeconds = 0; let isWalking = false; let steps = 0;
+        function toggleWalk() {
+            const btn = document.getElementById('startWalkBtn');
+            const todayStr = new Date().toLocaleDateString('fa-IR');
+            const todayFoods = foodDiary.filter(f => f.date === todayStr);
+            const totalCals = todayFoods.reduce((sum, item) => sum + item.cal, 0);
+            
+            const diff = userProfile.difficulty || 'hard';
+            let diffFactor = 1.15;
+            if(diff === 'normal') diffFactor = 1.0;
+            if(diff === 'extreme') diffFactor = 1.35;
+
+            const strictMultiplier = totalCals > userProfile.targetCal ? diffFactor * 1.15 : diffFactor;
+
+            if(isWalking) {
+                clearInterval(walkTimer);
+                btn.innerText = 'ادامه پیاده‌روی';
+                btn.style.background = 'var(--primary)';
+            } else {
+                walkTimer = setInterval(() => {
+                    walkSeconds++;
+                    steps += Math.round(2.5 * strictMultiplier);
+                    const mins = Math.floor(walkSeconds / 60).toString().padStart(2, '0');
+                    const secs = (walkSeconds % 60).toString().padStart(2, '0');
+                    document.getElementById('walkTime').innerText = `${mins}:${secs}`;
+                    document.getElementById('stepCount').innerText = steps;
+                    const cal = (((userProfile.weight * 3.8 * 3.5) / 200) * (walkSeconds / 60)) * strictMultiplier;
+                    document.getElementById('walkCal').innerText = cal.toFixed(1);
+                }, 1000);
+                btn.innerText = 'توقف';
+                btn.style.background = 'var(--danger)';
+            }
+            isWalking = !isWalking;
+        }
+
+        function resetWalk() {
+            clearInterval(walkTimer); isWalking = false; walkSeconds = 0; steps = 0;
+            document.getElementById('walkTime').innerText = "00:00";
+            document.getElementById('stepCount').innerText = "0";
+            document.getElementById('walkCal').innerText = "0";
+            document.getElementById('startWalkBtn').innerText = 'شروع پیاده‌روی';
+            document.getElementById('startWalkBtn').style.background = 'var(--primary)';
+        }
+
+        function setReminder() {
+            if ("Notification" in window && Notification.permission !== "granted") {
+                Notification.requestPermission();
+            }
+            const timeVal = document.getElementById('workoutTimeInput').value;
+            if(!timeVal) return;
+            localStorage.setItem('nuvoraWorkoutTime', timeVal);
+            alert(`یادآور تمرین برای ساعت ${timeVal} تنظیم شد.`);
+        }
+
+        function checkTimeForNotification() {
+            setInterval(() => {
+                const targetTime = localStorage.getItem('nuvoraWorkoutTime');
+                if(!targetTime) return;
+                const now = new Date();
+                const currentStr = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+                if(currentStr === targetTime && localStorage.getItem('nuvoraLastNotified') !== now.toLocaleDateString()) {
+                    if (Notification.permission === "granted") {
+                        new Notification("NuvoraFit - وقت تمرین!", { body: "زمان مقرر برای انجام تمرینات ورزشی فرا رسیده است." });
+                    } else {
+                        alert("وقت تمرینه! برای رسیدن به هدف تلاش کن!");
+                    }
+                    localStorage.setItem('nuvoraLastNotified', now.toLocaleDateString());
+                }
+            }, 60000);
+        }
+
+        function nav(pId, el) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(pId).classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            el.classList.add('active');
+        }
+    </script>
+</body>
+</html>
